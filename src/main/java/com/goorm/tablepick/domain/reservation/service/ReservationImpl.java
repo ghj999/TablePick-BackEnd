@@ -3,6 +3,7 @@ package com.goorm.tablepick.domain.reservation.service;
 import com.goorm.tablepick.domain.member.entity.Member;
 import com.goorm.tablepick.domain.member.repository.MemberRepository;
 import com.goorm.tablepick.domain.reservation.dto.request.ReservationRequestDto;
+import com.goorm.tablepick.domain.reservation.dto.response.ReservationSlotResponseDto;
 import com.goorm.tablepick.domain.reservation.entity.Reservation;
 import com.goorm.tablepick.domain.reservation.entity.ReservationSlot;
 import com.goorm.tablepick.domain.reservation.enums.ReservationStatus;
@@ -76,6 +77,7 @@ public class ReservationImpl implements ReservationService {
                 .reservationSlot(reservationSlot)
                 .partySize(request.getPartySize())
                 .reservationStatus(ReservationStatus.CONFIRMED)
+                .restaurant(restaurant)  // ✅ 이게 누락되면 에러 발생!
                 .build();
 
         reservationRepository.save(reservation);
@@ -130,6 +132,31 @@ public class ReservationImpl implements ReservationService {
                 .toList();
 
         return availableTimes;
+    }
+    @Override
+    @Transactional
+    public List<ReservationSlotResponseDto> getAvailableReservationSlots(Long restaurantId, LocalDate date) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RestaurantException(RestaurantErrorCode.NOT_FOUND));
+
+        List<ReservationSlot> slots = reservationSlotRepository.findAvailableTimes(restaurantId, date);
+
+        return slots.stream().map(slot -> {
+            int reservedCount = slot.getReservations().stream()
+                    .filter(r -> r.getReservationStatus() == ReservationStatus.CONFIRMED)
+                    .mapToInt(r -> r.getPartySize().intValue())
+                    .sum();
+
+            int capacity = slot.getCount().intValue(); // 또는 restaurant.getMaxCapacity().intValue()
+
+            return ReservationSlotResponseDto.builder()
+                    .slotId(slot.getId())
+                    .time(slot.getTime())
+                    .reservedCount(reservedCount)
+                    .capacity(capacity)
+                    .available(reservedCount < capacity)
+                    .build();
+        }).toList();
     }
 }
 

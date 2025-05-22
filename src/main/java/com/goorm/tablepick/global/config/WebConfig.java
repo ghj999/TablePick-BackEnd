@@ -14,11 +14,13 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:5173")
-                .allowedMethods("GET", "POST", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("Content-Type", "Access-Token")
-                .exposedHeaders("Access-Token")
-                .allowCredentials(true);
+                .allowedOrigins("*")    // 또는 "http://localhost:5173"
+                .allowedMethods("GET", "POST", "PATCH", "DELETE", "PUT", "OPTIONS")
+                .allowedHeaders("*")
+                //.allowedHeaders("Content-Type", "Access-Token")
+                //.exposedHeaders("Access-Token")
+                //.allowCredentials(true);                  // 주석 친 거는. 이전까지. 아마도 지혜님이 한 부분으로 추정.
+                .allowCredentials(false); // Swagger에서는 true ❌
     }
 
     // Firebase 서비스 워커를 위한 리소스 핸들러 추가

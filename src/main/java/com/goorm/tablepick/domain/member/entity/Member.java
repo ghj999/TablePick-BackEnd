@@ -4,33 +4,25 @@ import com.goorm.tablepick.domain.member.dto.MemberAddtionalInfoRequestDto;
 import com.goorm.tablepick.domain.member.dto.MemberUpdateRequestDto;
 import com.goorm.tablepick.domain.member.enums.AccountRole;
 import com.goorm.tablepick.domain.member.enums.Gender;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.*;
+import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Builder
 @AllArgsConstructor
+@Builder
+@EntityListeners(AuditingEntityListener.class) // ✅ [추가] JPA Auditing 활성화
 public class Member {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -49,7 +41,12 @@ public class Member {
 
     private String profileImage;
 
+    @Setter
     private Boolean isMemberDeleted;
+
+    // ✅ [추가] 일반 로그인 비밀번호 필드
+    @Column(length = 100)
+    private String password;
 
     @Setter
     @OneToOne
@@ -66,9 +63,16 @@ public class Member {
 
     private String providerId;
 
-    // FCM 토큰 필드 추가
     @Column(length = 255)
     private String fcmToken;
+
+    // ✅ [추가] 생성일, 수정일 자동 관리 필드
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
 
     public void updateRefreshToken(RefreshToken refreshToken) {
         this.refreshToken = refreshToken;
@@ -85,12 +89,10 @@ public class Member {
         return this;
     }
 
-    // FCM 토큰 업데이트 메서드
     public void updateFcmToken(String fcmToken) {
         this.fcmToken = fcmToken;
     }
 
-    // FCM 토큰 삭제 메서드
     public void removeFcmToken() {
         this.fcmToken = null;
     }
@@ -103,13 +105,12 @@ public class Member {
         if (this.memberTags == null) {
             this.memberTags = new ArrayList<>();
         } else {
-            this.memberTags.clear(); // 기존 값 제거 (orphanRemoval 작동)
+            this.memberTags.clear();
         }
 
         for (MemberTag tag : newMemberTags) {
-            tag.setMember(this); // 양방향 연관관계 설정
+            tag.setMember(this);
             this.memberTags.add(tag);
         }
-
     }
 }

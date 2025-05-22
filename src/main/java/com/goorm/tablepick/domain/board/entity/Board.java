@@ -1,6 +1,7 @@
 package com.goorm.tablepick.domain.board.entity;
 
 import com.goorm.tablepick.domain.board.dto.request.BoardRequestDto;
+import com.goorm.tablepick.domain.board.dto.request.BoardUpdateRequestDto;
 import com.goorm.tablepick.domain.member.entity.Member;
 import com.goorm.tablepick.domain.reservation.entity.Reservation;
 import jakarta.persistence.*;
@@ -58,6 +59,10 @@ public class Board {
     }
 
     public void updateFromDto(BoardRequestDto dto) {
+        this.content = dto.getContent();
+    }
+
+    public void updateFromDto(BoardUpdateRequestDto dto) {
         this.content = dto.getContent();
     }
 

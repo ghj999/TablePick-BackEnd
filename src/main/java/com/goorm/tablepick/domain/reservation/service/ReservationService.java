@@ -1,6 +1,8 @@
 package com.goorm.tablepick.domain.reservation.service;
 
 import com.goorm.tablepick.domain.reservation.dto.request.ReservationRequestDto;
+import com.goorm.tablepick.domain.reservation.dto.response.ReservationSlotResponseDto;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -12,4 +14,7 @@ public interface ReservationService {
     void cancelReservation(String username, Long reservationId);
 
     List<LocalTime> getAvailableReservationTimes(Long restaurantId, LocalDate date);
+
+    List<ReservationSlotResponseDto> getAvailableReservationSlots(Long restaurantId, LocalDate date);
+
 }

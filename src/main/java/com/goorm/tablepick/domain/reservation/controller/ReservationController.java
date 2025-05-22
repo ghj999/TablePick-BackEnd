@@ -1,6 +1,7 @@
 package com.goorm.tablepick.domain.reservation.controller;
 
 import com.goorm.tablepick.domain.reservation.dto.request.ReservationRequestDto;
+import com.goorm.tablepick.domain.reservation.dto.response.ReservationSlotResponseDto;
 import com.goorm.tablepick.domain.reservation.service.ReservationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -69,5 +70,15 @@ public class ReservationController {
     ) {
         List<LocalTime> availableTimes = reservationService.getAvailableReservationTimes(restaurantId, date);
         return ResponseEntity.ok(availableTimes);
+    }
+    @GetMapping("/available-slots")
+    @Operation(summary = "예약 가능한 슬롯 상세 정보 조회")
+    public ResponseEntity<List<ReservationSlotResponseDto>> getAvailableReservationSlots(
+            @RequestParam Long restaurantId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        List<ReservationSlotResponseDto> response =
+                reservationService.getAvailableReservationSlots(restaurantId, date);
+        return ResponseEntity.ok(response);
     }
 }

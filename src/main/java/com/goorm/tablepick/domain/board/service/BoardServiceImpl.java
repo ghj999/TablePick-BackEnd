@@ -1,6 +1,7 @@
 package com.goorm.tablepick.domain.board.service;
 
 import com.goorm.tablepick.domain.board.dto.request.BoardCategorySearchRequestDto;
+import com.goorm.tablepick.domain.board.dto.request.BoardUpdateRequestDto;
 import com.goorm.tablepick.domain.board.dto.response.BoardCreateResponseDto;
 import com.goorm.tablepick.domain.board.dto.request.BoardRequestDto;
 import com.goorm.tablepick.domain.board.dto.response.BoardDetailResponseDto;
@@ -240,13 +241,42 @@ public class BoardServiceImpl implements BoardService {
     }
 
     @Override
-    public void updateBoard(Long boardId, BoardRequestDto dto, Member member) {
-        throw new UnsupportedOperationException("updateBoard() 아직 구현되지 않았습니다.");
+    @Transactional
+    public void updateBoard(Long boardId, BoardUpdateRequestDto dto, Member member) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
+
+        if (!board.getMember().getId().equals(member.getId())) {
+            throw new AccessDeniedException("게시글 수정 권한이 없습니다.");
+        }
+
+        // 내용 업데이트
+        board.updateFromDto(dto);
+
+        // 기존 태그 삭제
+        boardTagRepository.deleteAllByBoard(board);
+
+        // 새 태그 추가
+        for (String tagName : dto.getTagNames()) {
+            Tag tag = tagRepository.findByName(tagName)
+                    .orElseGet(() -> tagRepository.save(new Tag(tagName)));
+            BoardTag boardTag = new BoardTag(board, tag);
+            board.addTag(boardTag);
+            boardTagRepository.save(boardTag);
+        }
     }
 
     @Override
+    @Transactional
     public void deleteBoard(Long boardId, Member member) {
-        throw new UnsupportedOperationException("deleteBoard() 아직 구현되지 않았습니다.");
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
+
+        if (!board.getMember().getId().equals(member.getId())) {
+            throw new AccessDeniedException("게시글 삭제 권한이 없습니다.");
+        }
+
+        boardRepository.delete(board); // cascade 옵션으로 이미지/태그도 삭제됨
     }
 
     @Override

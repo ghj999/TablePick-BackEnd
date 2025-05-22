@@ -2,23 +2,22 @@ package com.goorm.tablepick.domain.member.dto;
 
 import com.goorm.tablepick.domain.member.entity.Member;
 import com.goorm.tablepick.domain.member.enums.AccountRole;
-import lombok.RequiredArgsConstructor;
+import lombok.Getter;
 
-@RequiredArgsConstructor
+@Getter
 public class GoogleInfo implements OAuthInfo {
-    private String nickname;
-    private String email;
-    private String profileImage;
-    private String provider;
-    private String providerId; //다른분들이 봣을때 잘모를수잇다 그러니 공통적인 필드값은 관리한느게 저ㅗㅎ다
+
+    private final String provider = "google";
+    private final String providerId;
+    private final String email;
+    private final String nickname;
+    private final String profileImage;
 
     public GoogleInfo(String name, String picture, String email, String sub) {
         this.nickname = name;
         this.email = email;
         this.profileImage = picture;
-        this.provider = "google";
         this.providerId = sub;
-
     }
 
     @Override
@@ -33,5 +32,4 @@ public class GoogleInfo implements OAuthInfo {
                 .providerId(this.providerId)
                 .build();
     }
-
 }

@@ -18,4 +18,5 @@ public interface BoardTagRepository extends JpaRepository<BoardTag, Long> {
     List<Board> findAllBoards();
 
     void deleteByBoardId(Long boardId); // 게시물 수정 시 기존 태그 삭제용
+    void deleteAllByBoard(Board board);
 }

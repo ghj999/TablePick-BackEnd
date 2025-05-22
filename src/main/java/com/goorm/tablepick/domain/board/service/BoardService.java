@@ -1,6 +1,7 @@
 package com.goorm.tablepick.domain.board.service;
 
 import com.goorm.tablepick.domain.board.dto.request.BoardCategorySearchRequestDto;
+import com.goorm.tablepick.domain.board.dto.request.BoardUpdateRequestDto;
 import com.goorm.tablepick.domain.board.dto.response.BoardCreateResponseDto;
 import com.goorm.tablepick.domain.board.dto.request.BoardRequestDto;
 import com.goorm.tablepick.domain.board.dto.response.BoardDetailResponseDto;
@@ -22,7 +23,7 @@ public interface BoardService {
     BoardCreateResponseDto createBoard(BoardRequestDto dto, List<MultipartFile> images, Member member);
 
 
-    void updateBoard(Long boardId, BoardRequestDto dto, Member member);
+    void updateBoard(Long boardId, BoardUpdateRequestDto dto, Member member);
     void deleteBoard(Long boardId, Member member);
 
     PagedBoardsResponseDto searchAllByCategory(@Valid BoardCategorySearchRequestDto boardSearchRequestDto);

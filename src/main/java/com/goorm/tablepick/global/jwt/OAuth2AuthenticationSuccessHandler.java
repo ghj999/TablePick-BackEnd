@@ -8,9 +8,6 @@ import com.goorm.tablepick.global.security.CustomUserDetailsService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -21,6 +18,10 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.Map;
+
 @Component
 @RequiredArgsConstructor
 public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccessHandler {
@@ -30,57 +31,51 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     private final JwtProvider jwtProvider;
     private final CustomUserDetailsService customUserDetailsService;
 
+    private static final String REDIRECT_URL = "http://localhost:5173/oauth2/success"; // 🔧 [추가]
+
     @Override
     @Transactional
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException {
+
         DefaultOAuth2User oAuth2User = (DefaultOAuth2User) authentication.getPrincipal();
         Map<String, Object> attributes = oAuth2User.getAttributes();
-        String accessToken = getAccessTokenFromCookie(request);
-        String refreshToken = getRefreshTokenFromCookie(request);
-        String email = extractEmail(attributes);
-        // 사용자 정보 조회
+        String email = extractEmail(attributes); // 🔧 [수정] 여러 플랫폼 대응
         Member member = memberRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("인증 후 사용자 정보가 없습니다."));
-        //인증된 객체로 저장
+
         authenticateUser(member);
-        //저장된 리프레쉬 토큰이 있는지 있으면 불러오고 없으면 null
+
+        String accessToken = getAccessTokenFromCookie(request);
+        String refreshToken = getRefreshTokenFromCookie(request);
+
         String storedRefreshToken = member.getRefreshToken() != null ? member.getRefreshToken().getToken() : null;
-        // 액세스 토큰 유효성 검사 및 재발급
+
+        // 🔧 [변경] 토큰 유효성 검사 및 발급
         if (accessToken == null || !jwtProvider.validateToken(accessToken)) {
-            accessToken = jwtProvider.createAccessToken(member.getId(), email);
-            // 리프레시 토큰 유효성 검사 및 재발급
-            if (member.getRefreshToken() == null || !jwtProvider.validateToken(storedRefreshToken)) {
+            accessToken = jwtProvider.createAccessToken(member.getId(), member.getEmail());
+            if (storedRefreshToken == null || !jwtProvider.validateToken(storedRefreshToken)) {
                 refreshToken = issueAndSaveRefreshToken(member).getToken();
             }
         }
-        //액세스 토큰을 쿠키에 설정
-        Cookie accessCookie = new Cookie("access_token", accessToken);
-        accessCookie.setHttpOnly(true);
-        accessCookie.setPath("/");
 
-        accessCookie.setMaxAge(60 * 60);
+        // 🔧 [추가] 토큰 쿠키 설정 메서드로 분리
+        setTokenCookies(response, accessToken, refreshToken);
 
-        // 리프레시 토큰을 쿠키에 설정
-        Cookie refreshCookie = new Cookie("refresh_token", refreshToken);
-        refreshCookie.setHttpOnly(true);
-//        refreshCookie.setSecure(true); // HTTPS에서만 전송
-        refreshCookie.setPath("/");
-        refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7일
-
-        response.addCookie(refreshCookie);
-        response.addCookie(accessCookie);
-        //리다이렉션
-        String redirectUrl = "http://localhost:5173/oauth2/success";
-        response.sendRedirect(redirectUrl);
+        // 🔧 [상수 사용] 리다이렉트
+        response.sendRedirect(REDIRECT_URL);
     }
 
     private String extractEmail(Map<String, Object> attributes) {
         if (attributes.containsKey("kakao_account")) {
             Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
             return (String) kakaoAccount.get("email");
+        } else if (attributes.containsKey("response")) { // 🔧 [추가] for NAVER
+            Map<String, Object> naverResponse = (Map<String, Object>) attributes.get("response");
+            return (String) naverResponse.get("email");
+        } else {
+            return (String) attributes.get("email"); // Google 등 기본
         }
-        return (String) attributes.get("email");
     }
 
     private void authenticateUser(Member member) {
@@ -90,49 +85,51 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         SecurityContextHolder.getContext().setAuthentication(authToken);
     }
 
-    //refresh 토큰 발급 및 db 저장
-
     private RefreshToken issueAndSaveRefreshToken(Member member) {
-        LocalDateTime expiredAt = LocalDateTime.now().plusDays(7);
-        //기존 토큰이 있다면 삭제
         if (member.getRefreshToken() != null) {
             refreshTokenRepository.delete(member.getRefreshToken());
         }
-        String newRefreshToken = jwtProvider.createRefreshToken(member.getId(), member.getEmail());
 
+        String newRefreshToken = jwtProvider.createRefreshToken(member.getId(), member.getEmail());
         RefreshToken refreshToken = RefreshToken.builder()
                 .token(newRefreshToken)
-                .expiredAt(expiredAt)
+                .expiredAt(LocalDateTime.now().plusDays(7))
                 .member(member)
                 .build();
 
         member.setRefreshToken(refreshToken);
+        return refreshTokenRepository.save(refreshToken);
+    }
 
-        refreshTokenRepository.save(refreshToken);
+    private void setTokenCookies(HttpServletResponse response, String accessToken, String refreshToken) {
+        Cookie accessCookie = new Cookie("access_token", accessToken);
+        accessCookie.setHttpOnly(true);
+        accessCookie.setPath("/");
+        accessCookie.setMaxAge(60 * 60); // 1시간
 
+        Cookie refreshCookie = new Cookie("refresh_token", refreshToken);
+        refreshCookie.setHttpOnly(true);
+        refreshCookie.setPath("/");
+        refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7일
 
-        return refreshToken;
+        response.addCookie(accessCookie);
+        response.addCookie(refreshCookie);
     }
 
     private String getAccessTokenFromCookie(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("access_token".equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
-        }
-        return null;
+        return getCookieValue(request, "access_token");
     }
 
-    // 쿠키에서 리프레쉬 토큰 가져오기
     private String getRefreshTokenFromCookie(HttpServletRequest request) {
+        return getCookieValue(request, "refresh_token");
+    }
+
+    private String getCookieValue(HttpServletRequest request, String name) {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("refresh_token".equals(cookie.getName())) {
-                    return cookie.getValue();
+            for (Cookie c : cookies) {
+                if (name.equals(c.getName())) {
+                    return c.getValue();
                 }
             }
         }

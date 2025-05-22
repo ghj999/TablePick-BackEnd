@@ -2,6 +2,7 @@ package com.goorm.tablepick.domain.board.controller;
 
 import com.goorm.tablepick.domain.board.dto.request.BoardCategorySearchRequestDto;
 import com.goorm.tablepick.domain.board.dto.request.BoardRequestDto;
+import com.goorm.tablepick.domain.board.dto.request.BoardUpdateRequestDto;
 import com.goorm.tablepick.domain.board.dto.response.*;
 import com.goorm.tablepick.domain.board.service.BoardService;
 import com.goorm.tablepick.domain.member.entity.Member;
@@ -89,6 +90,34 @@ public class BoardController {
         BoardCreateResponseDto response = boardService.createBoard(dto, images, member);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @PatchMapping("/{boardId}")
+    @Operation(summary = "게시글 수정", description = "게시글을 수정합니다.")
+    public ResponseEntity<String> updateBoard(
+            @PathVariable Long boardId,
+            @RequestBody @Valid BoardUpdateRequestDto dto,
+//            @RequestParam("content") String content,
+//            @RequestParam("tagNames") List<String> tagNames,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+//        BoardRequestDto dto = new BoardRequestDto();
+//        dto.setContent(content);
+//        dto.setTagNames(tagNames);
+
+        boardService.updateBoard(boardId, dto, userDetails.getMember());
+        return ResponseEntity.ok("게시글이 수정되었습니다.");
+    }
+
+    @DeleteMapping("/{boardId}")
+    @Operation(summary = "게시글 삭제", description = "게시글을 삭제합니다.")
+    public ResponseEntity<String> deleteBoard(
+            @PathVariable Long boardId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        boardService.deleteBoard(boardId, userDetails.getMember());
+        return ResponseEntity.ok("게시글이 삭제되었습니다.");
+    }
+
     // 게시글 검색 페이지
     @GetMapping("/search/category")
     @Operation(summary = "게시글 카테고리 검색", description = "카테고리로 게시글 내용을 통해 게시글을 검색합니다.")
